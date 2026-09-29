@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="96" viewBox="0 0 360 96" fill="none">
+  <style>.word{fill:#285b45}@media (prefers-color-scheme: dark){.word{fill:#e6eedd}}</style>
+  <rect x="4" y="8" width="80" height="80" rx="22" fill="#1d4333"/>
+  <path d="M26 28h18c14 0 20 8 20 20s-6 20-20 20H26V28Z" stroke="#dbefad" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M36 38v20M46 38v20M36 48h10" stroke="#dbefad" stroke-width="4" stroke-linecap="round"/>
+  <text x="104" y="62" font-family="Outfit, Manrope, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="44" font-weight="700" letter-spacing="-1.5" class="word">dealerhub<tspan fill="#8fb35a">.</tspan></text>
+</svg>

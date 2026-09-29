@@ -1,27 +1,66 @@
-# DealerHub
+<div align="center">
 
-DealerHub is a backend for car dealerships that share one application but keep their company data separate. It handles company accounts, branches, users, permissions and request auditing through a REST API.
+<img src="assets/logo.svg" alt="DealerHub" width="300">
 
-Built with **FastAPI · PostgreSQL · SQLAlchemy · Alembic · Redis**.
+**Dealership management for companies that run more than one showroom.**
 
-![DealerHub API documentation showing authentication and company endpoints](assets/api-docs.png)
+Several dealerships share one platform, and each one only ever sees its own cars, people and numbers.
 
-*The running API, explored through its built-in Swagger interface. This repository contains the backend; a web frontend is not included.*
+![Python](https://img.shields.io/badge/Python-3.12-285b45?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-backend-285b45?logo=fastapi&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-285b45?logo=postgresql&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-7-285b45?logo=redis&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-Compose-285b45?logo=docker&logoColor=white)
 
-## Features
+[Getting started](#getting-started) · [Demo accounts](#demo-accounts) · [API](#api) · [Tests](#tests) · [Project structure](#project-structure)
 
-- Register a company and its owner account, then log in through the API.
-- Use JWT access tokens and rotating refresh tokens; revoke a refresh token on logout.
-- Manage users, company details and branches with the appropriate permissions.
-- Assign the six roles: owner, manager, salesperson, accountant, service and viewer.
-- Keep tenant-owned records scoped to the authenticated user's company.
-- Record changes in the audit log and check database/Redis readiness.
+</div>
 
-The backend uses PostgreSQL 16 and SQLAlchemy 2 for persistence, Alembic for schema changes, and Redis for caching. Passwords are hashed with bcrypt. Any client can connect through REST/JSON; Swagger provides a way to try the endpoints without a separate interface.
+<br>
 
-## Run with Docker
+![DealerHub dashboard](assets/dashboard.png)
 
-Install Docker with the Compose plugin, then run these commands from the repository root:
+## About
+
+I wanted a system where a car dealership group can log in, manage its branches and staff, and not worry about another company on the same server seeing its data. Every request is tied to a company, and the backend makes sure queries stay inside it.
+
+The backend is a REST API, so the web app (or anything else that speaks JSON) can talk to it without being coupled to it.
+
+<table>
+  <tr>
+    <td width="70%"><img src="assets/inventory.png" alt="Inventory page"></td>
+    <td width="30%"><img src="assets/mobile.png" alt="Dashboard on a phone"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Inventory with filters and status badges</sub></td>
+    <td align="center"><sub>Works on phones too</sub></td>
+  </tr>
+</table>
+
+## What's in here right now
+
+This repository currently holds the backend core that everything else is built on:
+
+| Feature | What it does |
+|---|---|
+| **Companies & branches** | Register a company with its owner account, then add branches |
+| **Login** | JWT access tokens plus refresh tokens that rotate and can be revoked on logout |
+| **Roles** | Owner, manager, salesperson, accountant, service and viewer, each with its own permissions |
+| **Data isolation** | Records belong to a company and are filtered by it on every query |
+| **Audit log** | Changes are recorded with who made them and when |
+| **Health checks** | `/health` for liveness, `/health/ready` checks PostgreSQL and Redis |
+| **Helpers** | Shared filtering, pagination and Redis caching used across the API |
+
+The React web client shown in the screenshots is being added to the repo.
+
+## Tech stack
+
+- **FastAPI** with async SQLAlchemy 2
+- **PostgreSQL 16**, schema managed by **Alembic** migrations
+- **Redis 7** for caching
+- **bcrypt** for passwords, **PyJWT** for tokens
+- **pytest** against a real database, **ruff** for linting
+- **Docker Compose** to run it all with one command
+
+## Getting started
+
+You need Docker with the Compose plugin.
 
 ```bash
 git clone https://github.com/L0rikKelmendi/DealerHub.git
@@ -30,48 +69,30 @@ docker compose up --build -d
 docker compose exec api python -m app.seed
 ```
 
-The API applies its migration before starting. The seed adds two demo companies, two branches and four users. It skips those demo records if they already exist.
+Migrations run automatically when the API container starts. The seed script adds two demo companies with a few users, and running it again won't create duplicates.
 
-- Swagger: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- Health: http://localhost:8000/health
-- Database and Redis readiness: http://localhost:8000/health/ready
+Then open **http://localhost:8000/docs**.
 
-The default host ports are **8000** for the API, **5433** for PostgreSQL and **6380** for Redis. They are bound to localhost. If another local project is using them, stop that project's services or choose different ports:
+| Service | Port on your machine |
+|---|---|
+| API | 8000 |
+| PostgreSQL | 5433 |
+| Redis | 6380 |
+
+PostgreSQL and Redis use 5433 and 6380 so they don't clash with a local install. If something else is already using a port, override it:
 
 ```bash
 POSTGRES_PORT=55433 REDIS_PORT=56380 API_PORT=58000 docker compose up --build -d
 ```
 
-With those overrides, Swagger is at `http://localhost:58000/docs`. Containers still connect to PostgreSQL and Redis using their internal service ports.
+Stop everything with `docker compose down`. Your data stays in the volume unless you add `-v`.
 
-To view logs or stop the stack:
+<details>
+<summary><b>Running the API without Docker</b></summary>
 
-```bash
-docker compose logs -f api
-docker compose down
-```
+<br>
 
-`docker compose down` keeps the database volume. Do not add `-v` unless you intend to delete its data.
-
-## Demo accounts
-
-All four accounts use the password `Password123!`.
-
-| Account | Company | Role |
-|---|---|---|
-| `owner@prishtina.dev` | Prishtina Motors | Owner |
-| `sales@prishtina.dev` | Prishtina Motors | Salesperson |
-| `accountant@prishtina.dev` | Prishtina Motors | Accountant |
-| `owner@tirana.dev` | Tirana Auto Group | Owner |
-
-In Swagger, call `POST /api/v1/auth/login`, copy the returned `access_token`, and paste it into **Authorize**. You can then try the protected endpoints. Logging in as the second company's owner is useful for checking that company data stays separate.
-
-These are public demo credentials. The default database password and signing key are for local development only, not a public deployment.
-
-## Run the API locally
-
-Use Python 3.12 or newer and `make`. Start just the database and Redis containers, then install the backend dependencies:
+You still need the database and Redis, so start just those two, then run the API with Python 3.12+:
 
 ```bash
 docker compose up -d db redis
@@ -82,50 +103,74 @@ make seed
 make api
 ```
 
-Run these commands from the repository root. The API reads `.env` from its working directory, so the local configuration belongs in **`backend/.env`**, not the repository root. The example URLs already match ports 5433 and 6380; update them if you changed the host ports.
+The `.env` goes in `backend/` because the API reads it from its working directory. Don't run this and the Docker API at the same time, they both want port 8000.
 
-Do not run the local API and the Compose API on port 8000 at the same time.
+</details>
 
-## Tests and migration checks
+## Demo accounts
 
-The backend has **38 tests** covering authentication, user and company APIs, health checks, and middleware/audit behavior. They use real PostgreSQL and Redis rather than replacing the database with a mock.
+Password for all of them: `Password123!`
 
-Create a dedicated test database once:
+| Email | Company | Role |
+|---|---|---|
+| `owner@prishtina.dev` | Prishtina Motors | Owner |
+| `sales@prishtina.dev` | Prishtina Motors | Salesperson |
+| `accountant@prishtina.dev` | Prishtina Motors | Accountant |
+| `owner@tirana.dev` | Tirana Auto Group | Owner |
+
+Try logging in as both owners. Each one only gets their own company's users and branches back.
+
+> These credentials and the default secrets in `.env.example` are only for running locally.
+
+## API
+
+Everything is under `/api/v1`. The easiest way to explore it is Swagger at `/docs` (ReDoc is at `/redoc`):
+
+1. Call `POST /api/v1/auth/login` with one of the demo accounts
+2. Copy the `access_token` from the response
+3. Click **Authorize** and paste it in
+
+![Swagger docs](assets/api-docs.png)
+
+## Tests
+
+38 tests cover auth, users, companies, health checks, middleware and the audit log. They run against real PostgreSQL and Redis instead of mocks, so the tenant filtering is tested the way it actually runs.
+
+Create the test database once:
 
 ```bash
 docker compose exec db createdb -U dealerhub dealerhub_test
 ```
 
-Then run the checks from the repository root after `make install`:
+Then:
 
 ```bash
 export TEST_DATABASE_URL=postgresql+asyncpg://dealerhub:dealerhub@localhost:5433/dealerhub_test
 export TEST_REDIS_URL=redis://localhost:6380/1
 make test
 make lint
-cd backend
-.venv/bin/alembic check
+cd backend && .venv/bin/alembic check
 ```
 
-The test suite recreates the test schema and flushes the selected Redis database. **Never point these test variables at a database containing data you want to keep.** Redis database 1 is reserved for tests here; the application uses database 0. Run migrations before `alembic check`.
+⚠️ The tests drop and recreate the schema and flush that Redis database, so never point them at data you care about.
 
-## Code layout
+## Project structure
 
 ```text
 backend/
-  alembic/             Initial migration and migration configuration
-  app/
-    api/               Health routes and versioned API routers
-    core/              Settings, authentication, roles, middleware and shared helpers
-    db/                Sessions, model base and repositories
-    models/            Company, branch, user, role, token and audit models
-    schemas/           Request and response validation
-    services/          Authentication, company and user operations
-    seed.py            Demo accounts and companies
-  tests/               API and middleware tests
+├── alembic/        migrations
+├── app/
+│   ├── api/        routes (health + /api/v1)
+│   ├── core/       config, security, roles, middleware, filters, pagination, cache
+│   ├── db/         session, base model, tenant-aware repository
+│   ├── models/     company, branch, user, role, refresh token, audit log
+│   ├── schemas/    request/response models
+│   ├── services/   auth, company and user logic
+│   └── seed.py     demo data
+└── tests/
 ```
 
-The initial migration creates seven tables: `companies`, `branches`, `users`, `roles`, `user_roles`, `refresh_tokens` and `audit_logs`. Filtering, pagination and caching helpers live alongside the authentication and configuration code.
+The first migration creates `companies`, `branches`, `users`, `roles`, `user_roles`, `refresh_tokens` and `audit_logs`.
 
 ## Development note
 
