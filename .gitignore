@@ -1,0 +1,33 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# node
+node_modules/
+frontend/dist/
+frontend/coverage/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.local
+.env.*.local
+
+# editors / os
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# docker
+pgdata/
+
+# build artifacts
+*.zip

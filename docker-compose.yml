@@ -1,0 +1,55 @@
+# DealerHub — foundation stack (API + Postgres + Redis).
+# Usage: docker compose up --build
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dealerhub
+      POSTGRES_PASSWORD: dealerhub
+      POSTGRES_DB: dealerhub
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dealerhub -d dealerhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./backend
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dealerhub:dealerhub@db:5432/dealerhub
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-change-me-in-production
+      CORS_ORIGINS: http://localhost:${FRONTEND_PORT:-5173},http://localhost:3000
+      LOG_LEVEL: INFO
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=3)\""]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    volumes:
+      - ./backend:/srv
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
